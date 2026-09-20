@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: telecom-consumer
+  main:
+    web-application-type: ${CONSUMER_WEB_APPLICATION_TYPE:none}
+    banner-mode: "off"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${CONSUMER_GROUP_ID:telecom-consumers}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: ${CONSUMER_MAX_POLL_RECORDS:500}
+      properties:
+        group.protocol: classic
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+        fetch.min.bytes: ${CONSUMER_FETCH_MIN_BYTES:1}
+        fetch.max.bytes: ${CONSUMER_FETCH_MAX_BYTES:52428800}
+        max.partition.fetch.bytes: ${CONSUMER_MAX_PARTITION_FETCH_BYTES:1048576}
+        fetch.max.wait.ms: ${CONSUMER_FETCH_MAX_WAIT_MS:500}
+        max.poll.interval.ms: ${CONSUMER_MAX_POLL_INTERVAL_MS:300000}
+        allow.auto.create.topics: false
+        default.api.timeout.ms: 15000
+        request.timeout.ms: 10000
+
+consumer:
+  topic: ${CONSUMER_TOPIC:telecom-events}
+  concurrency: ${CONSUMER_CONCURRENCY:1}
+  cpu-iterations: ${CONSUMER_CPU_ITERATIONS:1000}
+  processing-delay-ms: ${CONSUMER_PROCESSING_DELAY_MS:0}
+  report-interval-ms: ${CONSUMER_REPORT_INTERVAL_MS:5000}
+
+server:
+  port: ${CONSUMER_HTTP_PORT:18081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    org.apache.kafka: WARN

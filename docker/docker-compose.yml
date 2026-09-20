@@ -1,0 +1,127 @@
+name: dissertation
+
+services:
+  kafka:
+    image: apache/kafka:4.2.0
+    hostname: kafka
+    cpus: 2.0
+    mem_limit: 2g
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "HOST://:9092,INTERNAL://:19092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "HOST://localhost:9092,INTERNAL://kafka:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "HOST:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:19092", "--list"]
+      interval: 30s
+      timeout: 15s
+      retries: 6
+      start_period: 30s
+
+  kafka-init:
+    image: apache/kafka:4.2.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    cpus: 0.5
+    mem_limit: 512m
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms64m -Xmx256m"
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command:
+      - --bootstrap-server
+      - kafka:19092
+      - --create
+      - --if-not-exists
+      - --topic
+      - telecom-events
+      - --partitions
+      - "6"
+      - --replication-factor
+      - "1"
+
+  telecom-consumer:
+    profiles:
+      - consumer
+    image: dissertation-telecom-consumer:0.1.0
+    build:
+      context: ../consumer
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    cpus: ${CONSUMER_CONTAINER_CPUS:-1.0}
+    mem_limit: ${CONSUMER_CONTAINER_MEMORY:-512m}
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      CONSUMER_TOPIC: ${CONSUMER_TOPIC:-telecom-events}
+      CONSUMER_GROUP_ID: ${CONSUMER_GROUP_ID:-telecom-consumers}
+      CONSUMER_CONCURRENCY: ${CONSUMER_CONCURRENCY:-1}
+      CONSUMER_CPU_ITERATIONS: ${CONSUMER_CPU_ITERATIONS:-1000}
+      CONSUMER_PROCESSING_DELAY_MS: ${CONSUMER_PROCESSING_DELAY_MS:-0}
+      CONSUMER_REPORT_INTERVAL_MS: ${CONSUMER_REPORT_INTERVAL_MS:-5000}
+      CONSUMER_MAX_POLL_RECORDS: ${CONSUMER_MAX_POLL_RECORDS:-500}
+      CONSUMER_FETCH_MIN_BYTES: ${CONSUMER_FETCH_MIN_BYTES:-1}
+      CONSUMER_MAX_PARTITION_FETCH_BYTES: ${CONSUMER_MAX_PARTITION_FETCH_BYTES:-1048576}
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - --kafka.server=kafka:19092
+    ports:
+      - "127.0.0.1:9308:9308"
+
+  prometheus:
+    image: prom/prometheus:latest
+    depends_on:
+      - kafka-exporter
+    ports:
+      - "127.0.0.1:9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    depends_on:
+      - prometheus
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  kafka-data:
+  grafana-data:

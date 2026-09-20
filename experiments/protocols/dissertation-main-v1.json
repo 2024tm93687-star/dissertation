@@ -1,0 +1,41 @@
+{
+  "protocolVersion": "1.0",
+  "status": "frozen",
+  "randomSeed": 20260917,
+  "topic": "telecom-events",
+  "partitions": 6,
+  "replications": 3,
+  "approaches": ["static", "reactive", "adaptive"],
+  "staticConsumerCounts": [1, 2, 4],
+  "scenarios": [
+    "steady-small",
+    "steady-large",
+    "ramp-small",
+    "burst-quiet-medium"
+  ],
+  "scenarioDirectory": "experiments/scenarios",
+  "consumer": {
+    "cpuIterations": 1000,
+    "processingDelayMs": 5,
+    "cpuCoresPerContainer": 1.0,
+    "memoryPerContainer": "512m"
+  },
+  "kafka": {
+    "cpuCores": 2.0,
+    "memory": "2g"
+  },
+  "controller": {
+    "minConsumers": 1,
+    "maxConsumers": 4,
+    "capacityHeadroom": 1.2,
+    "targetLatencyP95Millis": 2000,
+    "sampleIntervalSeconds": 2,
+    "cooldownSeconds": 8
+  },
+  "qualityGate": {
+    "producerExitCode": 0,
+    "consumerFailures": 0,
+    "processedEqualsAcknowledged": true,
+    "finalLag": 0
+  }
+}

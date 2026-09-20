@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: telecom-producer
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      compression-type: none
+      properties:
+        enable.idempotence: true
+        linger.ms: 5
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        max.block.ms: 10000
+        buffer.memory: 16777216
+
+logging:
+  level:
+    org.apache.kafka: WARN
